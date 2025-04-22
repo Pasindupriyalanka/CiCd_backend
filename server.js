@@ -8,8 +8,8 @@ const cors = require('cors');
 const app = express();
 
 const allowedOrigins = [
-  'https://c-ic-d-frontend.vercel.app/',
-  'https://c-ic-d-frontend-git-main-pasindus-projects-4ef6e1a8.vercel.app/',
+  'https://c-ic-d-frontend.vercel.app',
+  'https://c-ic-d-frontend-git-main-pasindus-projects-4ef6e1a8.vercel.app',
   'http://localhost:3000'
 ];
 // Enable CORS with proper configuration for production
