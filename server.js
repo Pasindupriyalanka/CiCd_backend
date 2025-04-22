@@ -7,27 +7,45 @@ const cors = require('cors');
 
 const app = express();
 
-// Enable CORS
-app.use(cors());
-
+const allowedOrigins = [
+  'https://c-ic-d-frontend.vercel.app/',
+  'http://localhost:3000'
+];
+// Enable CORS with proper configuration for production
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type'],
+  credentials: true
+}));
 // =============================================
 // CONFIGURATION
 // =============================================
 const config = {
-  MONGODB_URI: 'mongodb+srv://pasindupriyalanka:T9cZNXvjmZ4Q8m2d@cluster0.esvsjg4.mongodb.net/image_upload?retryWrites=true&w=majority&appName=Cluster0',
-  PORT: 3001,
+  MONGODB_URI: process.env.MONGODB_URI || 'mongodb+srv://pasindupriyalanka:T9cZNXvjmZ4Q8m2d@cluster0.esvsjg4.mongodb.net/image_upload?retryWrites=true&w=majority&appName=Cluster0',
+  PORT: process.env.PORT || 3001,
   UPLOAD_DIR: path.join(__dirname, 'uploads'),
-  MAX_FILE_SIZE: 5 * 1024 * 1024 // 5MB
+  MAX_FILE_SIZE: 5 * 1024 * 1024, // 5MB
+  BASE_URL: process.env.BASE_URL || `http://localhost:${process.env.PORT || 3001}`
 };
 
 // =============================================
 // MONGODB CONNECTION
 // =============================================
 mongoose.connect(config.MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
   serverSelectionTimeoutMS: 10000,
-  socketTimeoutMS: 45000
+  socketTimeoutMS: 45000,
+  ssl: true,                   // Enforce TLS/SSL
+  authSource: 'admin',         // Specify authentication database
+  retryWrites: true,           // Enable retryable writes
+  retryReads: true,            // Enable retryable reads
+      
 })
 .then(() => console.log('✅ MongoDB connected successfully to Image_upload database'))
 .catch(err => {
@@ -112,7 +130,7 @@ app.post('/api/upload', upload.single('image'), async (req, res) => {
       image: {
         id: savedImage._id,
         name: savedImage.originalname,
-        url: `http://localhost:${config.PORT}/uploads/${savedImage.filename}`,
+        url: `${config.BASE_URL}/uploads/${savedImage.filename}`,
         size: savedImage.size,
         uploadedAt: savedImage.createdAt
       }
@@ -135,7 +153,7 @@ app.get('/api/images', async (req, res) => {
       images: images.map(img => ({
         id: img._id,
         name: img.originalname,
-        url: `http://localhost:${config.PORT}/uploads/${img.filename}`,
+        url: `${config.BASE_URL}/uploads/${img.filename}`,
         size: img.size,
         uploadedAt: img.createdAt
       }))
@@ -147,6 +165,11 @@ app.get('/api/images', async (req, res) => {
       error: 'Failed to fetch images' 
     });
   }
+});
+
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ status: 'OK', timestamp: new Date() });
 });
 
 // =============================================
@@ -170,6 +193,7 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(config.PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${config.PORT}`);
+  console.log(`🚀 Server running on port ${config.PORT}`);
   console.log(`📂 Uploads directory: ${config.UPLOAD_DIR}`);
+  console.log(`🌍 Base URL: ${config.BASE_URL}`);
 });
